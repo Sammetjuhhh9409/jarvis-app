@@ -253,7 +253,7 @@ function questEvent(s, name, d) {
   let changed = false
   for (const q of dd.quests) if (q.event === name && q.progress < q.goal) {
     q.progress++; changed = true
-    if (q.progress >= q.goal) s.crates.push("standard")
+    if (q.progress >= q.goal) { if (SNAP.rules.questCredits) s.credits += SNAP.rules.questCredits; else s.crates.push("standard") }
   }
   if (changed && dd.quests.every(q => q.progress >= q.goal) && !dd.bonus) { dd.bonus = true; s.credits += SNAP.rules.bonus }
 }
@@ -269,7 +269,7 @@ function reduce(s, e) {
     const t = dd.trivia; if (t.answered >= R.triviaPerDay) return
     t.answered++
     if (e.correct) t.correct++
-    if (t.correct >= R.rewardAt && !t.rewarded) { t.rewarded = true; s.crates.push("standard") }
+    if (t.correct >= R.rewardAt && !t.rewarded) { t.rewarded = true; if (R.triviaCredits) s.credits += R.triviaCredits; else s.crates.push("standard") }
     if (e.correct) questEvent(s, "trivia", e.day)
   } else if (e.type === "sell") {
     let got = 0
@@ -392,7 +392,7 @@ function render() {
     q.insertAdjacentHTML("beforeend", `<div class="card quest ${done ? "done" : ""}"><span class="t">${m.text}</span>
       <span class="n">${Math.min(m.progress, m.goal)}/${m.goal}</span>
       <div class="bar"><i style="width:${100 * Math.min(1, m.progress / m.goal)}%"></i></div>
-      <span class="reward">${done ? "✓ KIST VERDIEND" : "BELONING: 1 KIST"}</span></div>`)
+      <span class="reward">${done ? `✓ +${SNAP.rules.questCredits || 50} CREDITS` : `BELONING: ${SNAP.rules.questCredits || 50} CREDITS`}</span></div>`)
   }
   document.getElementById("bonusText").textContent = !d ? "" : d.bonus ? `✓ Alle quests klaar: +${SNAP.rules.bonus} credits.` : `Alle 3 klaar = +${SNAP.rules.bonus} credits extra.`
   const ml = document.getElementById("missionList"); ml.innerHTML = ""
@@ -400,7 +400,8 @@ function render() {
     const done = m.progress >= m.goal
     ml.insertAdjacentHTML("beforeend", `<div class="card quest ${done ? "done" : ""}"><span class="t">${m.text}</span>
       <span class="n">${Math.min(m.progress, m.goal)}/${m.goal}</span>
-      <div class="bar"><i style="width:${100 * Math.min(1, m.progress / m.goal)}%"></i></div></div>`)
+      <div class="bar"><i style="width:${100 * Math.min(1, m.progress / m.goal)}%"></i></div>
+      <span class="reward">${done ? `✓ +${SNAP.rules.missionCredits || 50} CREDITS` : `BELONING: ${SNAP.rules.missionCredits || 50} CREDITS`}</span></div>`)
   }
   if (!tq) trivia()
   // kisten
@@ -562,13 +563,13 @@ function trivia() {
   const t = d.trivia, R = SNAP.rules
   if (t.answered >= R.triviaPerDay) {
     tq = { done: true }
-    document.getElementById("tprog").textContent = `KLAAR VOOR VANDAAG  ·  ${t.correct}/${R.triviaPerDay} GOED` + (t.rewarded ? "  ·  ✓ KIST VERDIEND" : "")
+    document.getElementById("tprog").textContent = `KLAAR VOOR VANDAAG  ·  ${t.correct}/${R.triviaPerDay} GOED` + (t.rewarded ? `  ·  ✓ +${R.triviaCredits || 100} CREDITS` : "")
     document.getElementById("tq").textContent = t.rewarded ? "Goed gedaan, sir! Morgen staan er 10 nieuwe vragen klaar."
-      : `Je had er ${t.correct} goed (${R.rewardAt} nodig voor een kist). Morgen een nieuwe kans!`
+      : `Je had er ${t.correct} goed (${R.rewardAt} nodig voor ${R.triviaCredits || 100} credits). Morgen een nieuwe kans!`
     document.getElementById("ta").innerHTML = ""; return
   }
   tq = t.questions[t.answered]
-  document.getElementById("tprog").textContent = `VRAAG ${t.answered + 1}/${R.triviaPerDay}  ·  ${t.correct} GOED  ·  ` + (t.rewarded ? "✓ KIST VERDIEND" : `${R.rewardAt} GOED = KIST`)
+  document.getElementById("tprog").textContent = `VRAAG ${t.answered + 1}/${R.triviaPerDay}  ·  ${t.correct} GOED  ·  ` + (t.rewarded ? `✓ +${R.triviaCredits || 100} CREDITS` : `${R.rewardAt} GOED = ${R.triviaCredits || 100} CREDITS`)
   document.getElementById("tq").textContent = tq.q
   const a = document.getElementById("ta"); a.innerHTML = ""
   for (const ans of tq.a.slice().sort(() => Math.random() - 0.5)) {
@@ -585,7 +586,7 @@ function answer(btn, ans) {
   const before = day(S, today()).trivia.rewarded
   act({ type: "trivia", correct })
   const t = day(S, today()).trivia
-  if (!before && t.rewarded) toast(`🎁 ${SNAP.rules.rewardAt} goed: je hebt een kist verdiend!`)
+  if (!before && t.rewarded) toast(`🎁 ${SNAP.rules.rewardAt} goed: +${SNAP.rules.triviaCredits || 100} credits!`)
   document.getElementById("tnext").textContent = t.answered >= SNAP.rules.triviaPerDay ? "Bekijk je score" : "Volgende vraag"
   document.getElementById("tnext").style.display = "block"
 }
