@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05080D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jarvis">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Jarvis</title><style>
+  :root {
+    --bg: #05080D; --panel: #0E131C; --panel2: #141B27; --line: #1E2735; --text: #ECECEF; --muted: #8A93A3;
+    --accent: #5AC8FA; --gold: #F5B83D;
+    --common: #9AA3B2; --uncommon: #3DDC84; --rare: #4C9BF0; --epic: #B06CFF; --legendary: #F5B83D; --mythic: #FF3B4E;
+    --head: "Bahnschrift", "DIN Alternate", "Arial Narrow", system-ui, sans-serif;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); }
+  body { padding: env(safe-area-inset-top) 16px calc(86px + env(safe-area-inset-bottom)); min-height: 100vh; }
+  h1, h2, h3, .head { font-family: var(--head); letter-spacing: .08em; font-weight: 600; margin: 0; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 14px; }
+  header h1 { font-size: 22px; }
+  .chips { display: flex; gap: 8px; }
+  .chip { font-family: var(--head); font-size: 13px; letter-spacing: .06em; padding: 7px 12px; border-radius: 999px;
+          background: var(--panel); border: 1px solid var(--line); white-space: nowrap; }
+  .chip.gold { color: var(--gold); border-color: #5a4415; }
+  section { display: none; }
+  section.on { display: block; animation: fade .2s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+  h2 { font-size: 15px; color: var(--muted); margin: 22px 0 10px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin-bottom: 12px; }
+  .quest { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
+  .quest .t { font-size: 15px; }
+  .quest .n { font-family: var(--head); color: var(--muted); font-size: 13px; }
+  .bar { grid-column: 1 / -1; height: 5px; background: #1A2230; border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s; }
+  .done .t { color: var(--muted); text-decoration: line-through; }
+  .done .bar i { background: var(--uncommon); }
+  .reward { font-size: 12px; color: var(--gold); font-family: var(--head); letter-spacing: .05em; }
+  .btn { display: block; width: 100%; border: 0; border-radius: 14px; padding: 15px; font-family: var(--head);
+         font-size: 15px; letter-spacing: .1em; background: var(--accent); color: #05080D; font-weight: 700; }
+  .btn:disabled { opacity: .35; }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .btn.gold { background: var(--gold); }
+  .answers { display: grid; gap: 8px; margin-top: 12px; }
+  .answers button { text-align: left; border-radius: 12px; padding: 13px 14px; font-size: 15px; background: var(--panel2);
+                    color: var(--text); border: 1px solid var(--line); }
+  .answers button.right { background: #12351F; border-color: var(--uncommon); }
+  .answers button.wrong { background: #3A1418; border-color: var(--mythic); }
+  .q { font-size: 17px; line-height: 1.35; }
+  .feedback { margin-top: 10px; font-family: var(--head); letter-spacing: .05em; min-height: 20px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .shopgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .crate { text-align: center; }
+  .crate .hex { font-size: 44px; line-height: 1; margin: 6px 0 10px; }
+  .crate .price { font-family: var(--head); color: var(--gold); margin: 8px 0 12px; }
+  .row { display: grid; grid-template-columns: 58px 1fr auto; gap: 12px; align-items: center; padding: 10px 0;
+         border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row img { width: 58px; height: 70px; object-fit: cover; border-radius: 10px; background: var(--panel2); }
+  .row .nm { font-family: var(--head); font-size: 15px; }
+  .row .sub { font-size: 12px; }
+  .sellbtns { display: grid; gap: 6px; }
+  .sellbtns button { border: 0; border-radius: 10px; padding: 9px 10px; font-family: var(--head); font-size: 13px;
+                     background: var(--panel2); color: var(--gold); border: 1px solid #5a4415; }
+  .sellbtns button.sh { color: #fff; border: 1px solid transparent;
+                        background: linear-gradient(var(--panel2), var(--panel2)) padding-box,
+                                    linear-gradient(90deg, #ff4fd8, #6b8cff, #3df0ff, #7cff6b, #ffe14f) border-box; }
+  .selbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+  .btn.small { padding: 10px; font-size: 13px; }
+  .sub2 { font-family: var(--head); font-size: 13px; letter-spacing: .1em; color: var(--muted); margin: 16px 0 8px; }
+  .shinyhead { background: linear-gradient(90deg, #ff4fd8, #6b8cff, #3df0ff, #7cff6b, #ffe14f); -webkit-background-clip: text;
+               background-clip: text; color: transparent; }
+  .row.pick { cursor: pointer; }
+  .row .check { width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--line); display: grid; place-items: center;
+                font-size: 15px; color: #05080D; }
+  .row.sel .check { background: var(--gold); border-color: var(--gold); }
+  .row .val { font-family: var(--head); color: var(--gold); font-size: 13px; text-align: right; }
+  .sticky { position: sticky; bottom: calc(92px + env(safe-area-inset-bottom)); margin-top: 12px; box-shadow: 0 6px 30px #000; }
+  .danger { background: #3A1418; color: #FFB3B8; border: 1px solid var(--mythic); }
+  .filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin: 4px 0 12px; }
+  .filters button { flex: none; border-radius: 999px; padding: 8px 14px; font-family: var(--head); font-size: 13px;
+                    background: var(--panel); color: var(--muted); border: 1px solid var(--line); }
+  .filters button.on { color: var(--text); border-color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .item { position: relative; border-radius: 14px; overflow: hidden; background: var(--panel); border: 2px solid var(--line);
+          aspect-ratio: 5 / 6; }
+  .item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .item .lbl { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 6px 6px; font-family: var(--head); font-size: 11px;
+               text-align: center; background: linear-gradient(transparent, rgba(0,0,0,.85)); }
+  .item.locked img { filter: grayscale(1) brightness(.18); }
+  .item .tag { position: absolute; top: 5px; right: 5px; font-size: 10px; font-family: var(--head); padding: 2px 6px;
+               border-radius: 999px; color: #05080D; background: linear-gradient(90deg, #ff4fd8, #3df0ff, #ffe14f); }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+        padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); background: rgba(8, 11, 17, .96);
+        border-top: 1px solid var(--line); backdrop-filter: blur(12px); }
+  nav button { background: none; border: 0; color: var(--muted); font-family: var(--head); font-size: 12px; letter-spacing: .06em;
+               padding: 6px 0; display: grid; gap: 3px; justify-items: center; }
+  nav button b { font-size: 20px; font-weight: 400; }
+  nav button.on { color: var(--accent); }
+  .badge { position: relative; }
+  .badge[data-n]:not([data-n="0"])::after { content: attr(data-n); position: absolute; top: -4px; right: -10px; background: var(--gold);
+               color: #05080D; font-size: 10px; border-radius: 999px; padding: 1px 5px; font-weight: 700; }
+  /* kist openen */
+  .stage { text-align: center; padding: 20px 0 6px; }
+  .bigcrate { font-size: 120px; line-height: 1; display: inline-block; filter: drop-shadow(0 0 24px rgba(90,200,250,.5)); }
+  .shake { animation: shake .9s ease-in; }
+  @keyframes shake { 0%,100% { transform: none; } 20% { transform: rotate(-6deg) scale(1.05); } 40% { transform: rotate(6deg) scale(1.08); }
+                     60% { transform: rotate(-8deg) scale(1.12); } 80% { transform: rotate(8deg) scale(1.16); } }
+  .reveal { display: none; margin: 10px auto 0; max-width: 300px; border-radius: 22px; padding: 18px; background: var(--panel);
+            border: 2px solid var(--line); animation: pop .45s cubic-bezier(.2, 1.6, .4, 1); }
+  .reveal.on { display: block; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .reveal img { width: 100%; border-radius: 14px; display: block; }
+  .reveal .rar { font-family: var(--head); letter-spacing: .14em; font-size: 13px; margin-bottom: 10px; }
+  .reveal .nm { font-family: var(--head); font-size: 24px; margin-top: 12px; }
+  .sheet { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: flex-end; z-index: 5; }
+  .sheet.on { display: flex; }
+  .sheet .in { width: 100%; background: var(--panel); border-radius: 22px 22px 0 0; padding: 18px 18px calc(24px + env(safe-area-inset-bottom));
+               border-top: 2px solid var(--line); max-height: 88vh; overflow: auto; }
+  .sheet img { width: 62%; margin: 0 auto 12px; display: block; border-radius: 16px; }
+  .toast { position: fixed; left: 16px; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom)); background: #101824;
+           border: 1px solid var(--accent); border-radius: 14px; padding: 12px 14px; font-size: 14px; display: none; z-index: 9; }
+  .toast.on { display: block; animation: fade .2s; }
+  .offline { text-align: center; padding: 60px 10px; }
+  .syncline { font-family: var(--head); font-size: 11px; letter-spacing: .06em; color: var(--muted); margin: -6px 0 6px; cursor: pointer; }
+  img[data-k]:not([src]) { opacity: 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>J.A.R.V.I.S.</h1>
+  <div class="chips">
+    <span class="chip gold" id="credits">⬢ 0</span>
+    <span class="chip" id="crateChip">📦 0</span>
+  </div>
+</header>
+<div class="syncline" id="syncline"></div>
+
+<div id="offline" class="offline" style="display:none">
+  <h2 style="color:var(--text)">Nog niet gekoppeld</h2>
+  <p class="muted">Open de koppel-link uit Jarvis op je laptop (systeemvak → Telefoon-app koppelen) op deze telefoon.
+     Daarna werkt de app overal, ook zonder internet.</p>
+  <button class="btn ghost" onclick="sync(true)">Opnieuw proberen</button>
+</div>
+
+<!-- QUESTS -->
+<section id="quests" class="on">
+  <h2>TELEFOON-QUESTS VANDAAG</h2>
+  <div id="questList"></div>
+  <p class="muted" id="bonusText"></p>
+  <h2>IRON MAN-TRIVIA</h2>
+  <div class="card">
+    <div class="reward" id="tprog" style="margin-bottom:10px"></div>
+    <div class="q" id="tq">…</div>
+    <div class="answers" id="ta"></div>
+    <div class="feedback" id="tf"></div>
+    <button class="btn ghost" id="tnext" style="margin-top:12px;display:none" onclick="trivia()">Volgende vraag</button>
+  </div>
+  <h2>MISSIES OP JE LAPTOP</h2>
+  <div id="missionList"></div>
+</section>
+
+<!-- KISTEN -->
+<section id="crates">
+  <div class="stage">
+    <div class="bigcrate" id="bigcrate">📦</div>
+    <p class="muted" id="crateText"></p>
+  </div>
+  <button class="btn" id="openBtn" onclick="openCrate()">OPEN KIST</button>
+  <div class="reveal" id="reveal">
+    <div class="rar" id="rvRar"></div>
+    <img id="rvImg" alt="">
+    <div class="nm" id="rvName"></div>
+    <div class="muted" id="rvSub"></div>
+    <div class="reward" id="rvChance" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<!-- SHOP -->
+<section id="shop">
+  <h2>KISTEN KOPEN</h2>
+  <div class="shopgrid">
+    <div class="card crate"><div class="head">KIST</div><div class="hex">📦</div>
+      <div class="price" id="pStd">⬢ 100</div><button class="btn gold" id="bStd" onclick="buy('standard')">KOOP</button></div>
+    <div class="card crate"><div class="head">ELITE-KIST</div><div class="hex">🎁</div>
+      <div class="price" id="pEl">⬢ 300</div><button class="btn gold" id="bEl" onclick="buy('elite')">KOOP</button></div>
+  </div>
+  <h2>DUBBELEN VERKOPEN</h2>
+  <p class="muted">Tik aan wat je wilt verkopen. Je houdt er altijd één van over. Zeldzamer = meer waard, shiny = 10× zoveel.
+     Iets wat je maar 1× hebt, verkoop je in je Collectie.</p>
+  <div class="selbar"><button class="btn ghost small" onclick="selectAll()">Alles selecteren</button>
+    <button class="btn ghost small" onclick="selected.clear(); render()">Niets</button></div>
+  <h3 class="sub2">GEWOON</h3>
+  <div class="card" id="sellList"></div>
+  <h3 class="sub2 shinyhead">✦ SHINY</h3>
+  <div class="card" id="sellShinyList"></div>
+  <button class="btn gold sticky" id="sellBtn" onclick="sellSelected()" disabled>VERKOOP GESELECTEERD</button>
+</section>
+
+<!-- COLLECTIE -->
+<section id="collection">
+  <h2 id="colHead">COLLECTIE</h2>
+  <div class="filters" id="filters"></div>
+  <div class="grid" id="grid"></div>
+</section>
+
+<div class="sheet" id="sheet" onclick="if (event.target === this) this.classList.remove('on')">
+  <div class="in" id="sheetIn"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<nav>
+  <button class="on" data-p="quests"><b>◎</b>QUESTS</button>
+  <button data-p="crates"><b class="badge" id="navCrates">📦</b>KISTEN</button>
+  <button data-p="shop"><b>⬢</b>SHOP</button>
+  <button data-p="collection"><b>✦</b>COLLECTIE</button>
+</nav>
+
+<script>
+// ===== koppeling: d = data-gist, i = plaatjes-gist (eigenaar/id), t = GitHub-sleutel. Staan in de link =====
+const Q = new URLSearchParams(location.search)
+const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v) } catch (e) { return null } }
+for (const k of ["d", "i", "t"]) if (Q.get(k)) ls("jv-" + k, Q.get(k))
+const CFG = { d: Q.get("d") || ls("jv-d"), i: Q.get("i") || ls("jv-i"), t: Q.get("t") || ls("jv-t") }
+const TYPES = { mark: "Marks", skin: "Pil-skins", title: "Titels", line: "Begroetingen" }
+
+// ===== gegevens: de laatste stand van je laptop (snapshot) + wat je hier sindsdien deed (events) =====
+let SNAP = JSON.parse(ls("jv-snap") || "null")
+let EVENTS = JSON.parse(ls("jv-events") || "[]")
+let S = null, filter = "mark", shinyMode = false, lastSync = Number(ls("jv-lastsync") || 0), syncing = false
+const today = () => new Date().toLocaleDateString("sv-SE")   // 2026-10-06 (je eigen tijdzone)
+const RAR = () => SNAP.rules.rarities
+const itemOf = id => SNAP.items.find(x => x.id === id)
+const fmt = n => Number(n).toLocaleString("nl-NL")
+const SOORT = {mark: "van alle Marks", skin: "van alle skins", title: "van alle titels", line: "van alle quotes"}
+function pct(c) { const v = c * 100; const s = v >= 1 ? v.toFixed(1) : v >= 0.1 ? v.toFixed(2) : v >= 0.01 ? v.toFixed(3) : v.toFixed(4); return s.replace(".", ",") + "%" }
+function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2600) }
+
+// Stand = snapshot van de laptop + jouw acties die de laptop nog niet verwerkte (zelfde regels als op de laptop)
+function derive() {
+  const s = { credits: SNAP.credits, crates: SNAP.crates.slice(), owned: JSON.parse(JSON.stringify(SNAP.owned)),
+              days: JSON.parse(JSON.stringify(SNAP.days)) }
+  for (const e of EVENTS) if (e.id > SNAP.lastEvent) reduce(s, e)
+  return s
+}
+function day(s, d) { return s.days[d] }
+function questEvent(s, name, d) {
+  const dd = day(s, d); if (!dd) return
+  let changed = false
+  for (const q of dd.quests) if (q.event === name && q.progress < q.goal) {
+    q.progress++; changed = true
+    if (q.progress >= q.goal) s.crates.push("standard")
+  }
+  if (changed && dd.quests.every(q => q.progress >= q.goal) && !dd.bonus) { dd.bonus = true; s.credits += SNAP.rules.bonus }
+}
+const have = (s, id) => s.owned[id] || [0, 0]
+function canSell(s, id, shiny, allowLast) {
+  const [n, sh] = have(s, id); return (shiny ? sh : n) > 0 && (allowLast || n + sh >= 2)
+}
+function reduce(s, e) {
+  const R = SNAP.rules
+  if (e.type === "checkin" || e.type === "view") questEvent(s, e.type, e.day)
+  else if (e.type === "trivia") {
+    const dd = day(s, e.day); if (!dd) return
+    const t = dd.trivia; if (t.answered >= R.triviaPerDay) return
+    t.answered++
+    if (e.correct) t.correct++
+    if (t.correct >= R.rewardAt && !t.rewarded) { t.rewarded = true; s.crates.push("standard") }
+    if (e.correct) questEvent(s, "trivia", e.day)
+  } else if (e.type === "sell") {
+    let got = 0
+    for (let k = 0; k < (e.qty || 1); k++) {
+      if (!canSell(s, e.item, e.shiny, e.allowLast)) break
+      const o = s.owned[e.item]; o[e.shiny ? 1 : 0]--; const it = itemOf(e.item); got += e.shiny ? it.sellShiny : it.sell
+    }
+    if (got) { s.credits += got; questEvent(s, "sell", e.day) }
+  } else if (e.type === "buy") {
+    const price = R.prices[e.kind]; if (s.credits >= price) { s.credits -= price; s.crates.push(e.kind) }
+  } else if (e.type === "open") {
+    let i = s.crates.indexOf(e.kind); if (i < 0) i = s.crates.length ? 0 : -1
+    if (i < 0) return
+    s.crates.splice(i, 1)
+    const o = s.owned[e.item] || (s.owned[e.item] = [0, 0]); o[e.shiny ? 1 : 0]++
+    questEvent(s, "open_phone", e.day)
+  }
+}
+function act(e) {
+  const last = EVENTS.length ? EVENTS[EVENTS.length - 1].id : 0
+  e.id = Math.max(Date.now(), last + 1, (SNAP.lastEvent || 0) + 1); e.day = e.day || today()
+  EVENTS.push(e); ls("jv-events", JSON.stringify(EVENTS))
+  S = derive(); render(); sync()
+}
+
+// ===== bijwerken met GitHub (als er internet is). De laptop verwerkt je acties alleen als hij thuis is =====
+async function gh(method, path, body) {
+  const headers = { Authorization: "Bearer " + CFG.t, Accept: "application/vnd.github+json" }
+  if (body) headers["Content-Type"] = "application/json"
+  const r = await fetch("https://api.github.com" + path, { method, cache: "no-store", headers,
+    body: body ? JSON.stringify(body) : undefined })
+  if (!r.ok) throw new Error("GitHub " + r.status)
+  return r.json()
+}
+async function sync(manual) {
+  if (!CFG.d || !CFG.t || syncing) return
+  if (!navigator.onLine) { syncLine(); return }
+  syncing = true
+  try {
+    const g = await gh("GET", "/gists/" + CFG.d)
+    const snap = JSON.parse(g.files["snapshot.json"].content || "{}")
+    if (snap.generated && (!SNAP || snap.generated >= SNAP.generated)) { SNAP = snap; ls("jv-snap", JSON.stringify(SNAP)) }
+    if (SNAP) {
+      EVENTS = EVENTS.filter(e => e.id > SNAP.lastEvent); ls("jv-events", JSON.stringify(EVENTS))
+      const remote = JSON.parse((g.files["events.json"] || {}).content || '{"events":[]}').events || []
+      if (JSON.stringify(remote) !== JSON.stringify(EVENTS))
+        await gh("PATCH", "/gists/" + CFG.d, { files: { "events.json": { content: JSON.stringify({ events: EVENTS }) } } })
+    }
+    lastSync = Date.now(); ls("jv-lastsync", String(lastSync))
+    if (manual) toast("Bijgewerkt")
+  } catch (e) {
+    if (/GitHub 40[13]/.test(e.message)) askNewLink()  // sleutel verlopen of ingetrokken
+    else if (manual) toast("Bijwerken lukte niet: " + e.message)
+  }
+  syncing = false
+  if (SNAP) { S = derive(); render() } else showOffline()
+}
+// nieuwe sleutel plakken in déze app, zodat acties die nog wachten (bv. een zeldzame uit een kist) bewaard blijven
+let askedLink = false
+function askNewLink() {
+  if (askedLink) return
+  askedLink = true
+  const u = prompt("Je GitHub-sleutel werkt niet meer. Je acties blijven bewaard.\n\n"
+    + "Maak een nieuwe sleutel in Jarvis en plak hier de nieuwe koppel-link:")
+  if (!u) return
+  try {
+    const q = new URL(u.trim()).searchParams
+    for (const k of ["d", "i", "t"]) if (q.get(k)) { ls("jv-" + k, q.get(k)); CFG[k] = q.get(k) }
+    askedLink = false; setTimeout(() => sync(true), 0)
+  } catch (e) { toast("Dat is geen geldige link") }
+}
+function syncLine() {
+  const waiting = SNAP ? EVENTS.filter(e => e.id > SNAP.lastEvent).length : 0
+  const when = SNAP ? new Date(SNAP.generated * 1000).toLocaleString("nl-NL", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "-"
+  document.getElementById("syncline").innerHTML = (navigator.onLine ? "" : "OFFLINE · ")
+    + (waiting ? `⏳ ${waiting} ${waiting === 1 ? "actie wacht" : "acties wachten"} tot je laptop thuis is` : "✓ alles verwerkt")
+    + ` · laptop: ${when}`
+}
+function showOffline() {
+  document.querySelectorAll("section").forEach(s => s.classList.remove("on"))
+  document.getElementById("offline").style.display = "block"
+}
+
+// ===== plaatjes (uit de plaatjes-gist, daarna bewaard op je telefoon) =====
+const IMG = {}
+function imgTag(id, shiny, cls, style) {
+  const key = (shiny ? "s_" : "n_") + id
+  const tag = `<img data-k="${key}" ${cls ? `class="${cls}"` : ""} style="${style || ""}" alt="">`
+  setTimeout(() => loadImg(key), 0)
+  return tag
+}
+async function loadImg(key) {
+  if (!IMG[key]) IMG[key] = (async () => {
+    const cache = "caches" in window ? await caches.open("jv-img") : null
+    const url = `https://gist.githubusercontent.com/${CFG.i}/raw/${key}`
+    let res = cache && await cache.match(url)
+    if (!res) { res = await fetch(url); if (res.ok && cache) await cache.put(url, res.clone()) }
+    return res.ok ? "data:image/jpeg;base64," + (await res.text()).trim() : ""
+  })().catch(() => "")
+  const src = await IMG[key]
+  document.querySelectorAll(`img[data-k="${key}"]`).forEach(i => { if (src && i.src !== src) i.src = src })
+}
+
+// ===== tekenen =====
+function render() {
+  if (!SNAP || !S) return
+  document.getElementById("offline").style.display = "none"
+  const active = document.querySelector("nav button.on").dataset.p
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === active))
+  syncLine()
+  document.getElementById("credits").textContent = "⬢ " + fmt(S.credits)
+  document.getElementById("crateChip").textContent = "📦 " + S.crates.length
+  document.getElementById("navCrates").dataset.n = S.crates.length
+  const d = day(S, today())
+  // quests
+  const q = document.getElementById("questList"); q.innerHTML = ""
+  if (!d) q.innerHTML = `<p class="muted">Je quests voor vandaag komen zodra je laptop thuis is bijgewerkt.</p>`
+  for (const m of d ? d.quests : []) {
+    const done = m.progress >= m.goal
+    q.insertAdjacentHTML("beforeend", `<div class="card quest ${done ? "done" : ""}"><span class="t">${m.text}</span>
+      <span class="n">${Math.min(m.progress, m.goal)}/${m.goal}</span>
+      <div class="bar"><i style="width:${100 * Math.min(1, m.progress / m.goal)}%"></i></div>
+      <span class="reward">${done ? "✓ KIST VERDIEND" : "BELONING: 1 KIST"}</span></div>`)
+  }
+  document.getElementById("bonusText").textContent = !d ? "" : d.bonus ? `✓ Alle quests klaar: +${SNAP.rules.bonus} credits.` : `Alle 3 klaar = +${SNAP.rules.bonus} credits extra.`
+  const ml = document.getElementById("missionList"); ml.innerHTML = ""
+  for (const m of SNAP.missions) {
+    const done = m.progress >= m.goal
+    ml.insertAdjacentHTML("beforeend", `<div class="card quest ${done ? "done" : ""}"><span class="t">${m.text}</span>
+      <span class="n">${Math.min(m.progress, m.goal)}/${m.goal}</span>
+      <div class="bar"><i style="width:${100 * Math.min(1, m.progress / m.goal)}%"></i></div></div>`)
+  }
+  if (!tq) trivia()
+  // kisten
+  const n = S.crates.length
+  document.getElementById("crateText").textContent = n ? `${n} ${n === 1 ? "kist" : "kisten"} klaar${S.crates.includes("elite") ? " · waarvan Elite!" : ""}` : "Geen kisten. Doe een quest of koop er een in de shop."
+  document.getElementById("openBtn").disabled = !n
+  // shop
+  document.getElementById("pStd").textContent = "⬢ " + SNAP.rules.prices.standard
+  document.getElementById("pEl").textContent = "⬢ " + SNAP.rules.prices.elite
+  document.getElementById("bStd").disabled = S.credits < SNAP.rules.prices.standard
+  document.getElementById("bEl").disabled = S.credits < SNAP.rules.prices.elite
+  renderSell("sellList", false); renderSell("sellShinyList", true)
+  // collectie
+  const f = document.getElementById("filters"); f.innerHTML = ""
+  const mode = document.createElement("button")
+  mode.textContent = shinyMode ? "✦ SHINY'S" : "GEWOON"; mode.className = "on"
+  if (shinyMode) mode.style.cssText = "color:#05080D;border:0;background:linear-gradient(90deg,#ff4fd8,#6b8cff,#3df0ff,#7cff6b,#ffe14f)"
+  mode.onclick = () => { shinyMode = !shinyMode; render() }; f.appendChild(mode)
+  for (const [k, label] of Object.entries(TYPES)) {
+    const b = document.createElement("button"); b.textContent = label; b.className = filter === k ? "on" : ""
+    b.onclick = () => { filter = k; render() }; f.appendChild(b)
+  }
+  const g = document.getElementById("grid"); g.innerHTML = ""
+  const shown = SNAP.items.filter(i => i.type === filter && (shinyMode || !i.shinyOnly))
+  const has = i => shinyMode ? have(S, i.id)[1] > 0 : (!i.shinyOnly && have(S, i.id)[0] > 0)
+  document.getElementById("colHead").textContent = `${shinyMode ? "✦ SHINY'S" : "COLLECTIE"}  ${shown.filter(has).length}/${shown.length}`
+  for (const i of shown) {
+    const el = document.createElement("div")
+    el.className = "item" + (has(i) ? "" : " locked"); el.style.borderColor = has(i) ? `var(--${i.rarity})` : ""
+    el.innerHTML = imgTag(i.id, shinyMode && !i.shinyOnly) + (shinyMode && has(i) ? '<span class="tag">✦</span>' : "")
+      + `<div class="lbl">${has(i) ? nameOf(i) : (i.secret ? "GEHEIM" : "???")}</div>`
+    el.onclick = () => detail(i, has(i))
+    g.appendChild(el)
+  }
+}
+const nameOf = i => i.type === "line" ? "Begroeting" : i.name
+
+function detail(i, owned) {
+  if (owned) act({ type: "view" })
+  const [n, sh] = have(S, i.id)
+  document.getElementById("sheetIn").innerHTML = imgTag(i.id, shinyMode && !i.shinyOnly, "", owned ? "" : "filter:grayscale(1) brightness(.2)")
+    + `<div class="head" style="color:var(--${i.rarity});font-size:13px">${i.rarityName.toUpperCase()}${i.shinyOnly ? " · ✦ ALLEEN SHINY" : ""}</div>
+    <h3 style="font-size:24px;margin:6px 0">${owned ? (i.type === "line" ? "“" + i.name + "”" : i.name) : (i.secret ? "Geheim item" : "Nog niet gevonden")}</h3>
+    <p class="muted">${i.type === "line" ? "Begroeting van Jarvis" : i.sub}</p>
+    <p class="muted">${i.secret ? "Alleen via een geheime actie" : `Kans ${SOORT[i.type] || ""}: ${pct(i.chance)} · ✦ shiny ${pct(i.chanceShiny)}`}</p>
+    ${n + sh ? `<p class="muted">Je hebt: ${n}× gewoon${sh ? " · " + sh + "× ✦ shiny" : ""}</p>` : ""}
+    ${SNAP.equipped.includes(i.id) ? `<p style="color:var(--accent)" class="head">✓ UITGERUST OP JE LAPTOP</p>` : ""}
+    ${n > 0 ? `<button class="btn ghost" style="margin-top:12px" onclick="sellOne('${i.id}', false)">VERKOOP 1× GEWOON  ·  +${fmt(i.sell)}</button>` : ""}
+    ${sh > 0 ? `<button class="btn ghost" style="margin-top:8px" onclick="sellOne('${i.id}', true)">VERKOOP 1× ✦ SHINY  ·  +${fmt(i.sellShiny)}</button>` : ""}`
+  document.getElementById("sheet").classList.add("on")
+}
+
+// ===== verkopen =====
+const selected = new Set()
+function dupes(shiny) {
+  return SNAP.items.filter(i => have(S, i.id)[shiny ? 1 : 0] >= 2).sort((a, b) => RAR().indexOf(b.rarity) - RAR().indexOf(a.rarity))
+}
+function picks() {
+  const out = []
+  for (const key of selected) {
+    const [id, sh] = key.split("|"), shiny = sh === "1", i = itemOf(id); if (!i) continue
+    const qty = have(S, id)[shiny ? 1 : 0] - 1
+    if (qty > 0) out.push({ id, shiny, qty, value: qty * (shiny ? i.sellShiny : i.sell), item: i })
+  }
+  return out
+}
+function renderSell(id, shiny) {
+  const el = document.getElementById(id); el.innerHTML = ""
+  const list = dupes(shiny)
+  if (!list.length) el.innerHTML = `<p class="muted" style="margin:0">${shiny ? "Geen dubbele shiny's." : "Nog geen dubbelen. Open meer kisten!"}</p>`
+  for (const i of list) {
+    const key = i.id + "|" + (shiny ? 1 : 0), extra = have(S, i.id)[shiny ? 1 : 0] - 1
+    const row = document.createElement("div")
+    row.className = "row pick" + (selected.has(key) ? " sel" : "")
+    row.innerHTML = imgTag(i.id, shiny) + `<div><div class="nm">${nameOf(i)}</div>
+      <div class="sub" style="color:var(--${i.rarity})">${i.rarityName.toUpperCase()} · ${extra}× over</div>
+      <div class="val">+${fmt(extra * (shiny ? i.sellShiny : i.sell))}</div></div>
+      <div class="check">${selected.has(key) ? "✓" : ""}</div>`
+    row.onclick = () => { selected.has(key) ? selected.delete(key) : selected.add(key); render() }
+    el.appendChild(row)
+  }
+  const pick = picks(), btn = document.getElementById("sellBtn")
+  btn.disabled = !pick.length
+  btn.textContent = pick.length ? `VERKOOP ${pick.reduce((s, p) => s + p.qty, 0)}×  ·  +${fmt(pick.reduce((s, p) => s + p.value, 0))}` : "VERKOOP GESELECTEERD"
+}
+function selectAll() {
+  if (!confirm("Alle dubbelen selecteren? Je houdt van alles nog één exemplaar over.")) return
+  for (const sh of [false, true]) for (const i of dupes(sh)) selected.add(i.id + "|" + (sh ? 1 : 0))
+  render()
+}
+function sellSelected() {
+  const pick = picks(); if (!pick.length) return
+  const total = pick.reduce((s, p) => s + p.value, 0), count = pick.reduce((s, p) => s + p.qty, 0)
+  const rare = pick.filter(p => p.shiny || RAR().indexOf(p.item.rarity) >= 3).map(p => (p.shiny ? "✦ " : "") + nameOf(p.item))
+  if (!confirm(`⚠️ ${count} items verkopen voor ${fmt(total)} credits?` + (rare.length ? `\n\nDaar zitten zeldzame bij: ${rare.join(", ")}` : "")
+      + "\n\nJe houdt van alles nog één exemplaar.")) return
+  for (const p of pick) act({ type: "sell", item: p.id, shiny: p.shiny, qty: p.qty })
+  selected.clear(); toast(`Verkocht! +${fmt(total)} credits`)
+}
+function sellOne(id, shiny) {
+  const i = itemOf(id), [n, sh] = have(S, id), last = n + sh === 1, value = shiny ? i.sellShiny : i.sell
+  const msg = last ? `⚠️ Dit is je LAATSTE ${nameOf(i)}${shiny ? " (shiny)" : ""}!\n\nNa verkopen ben je hem kwijt. Verkopen voor ${fmt(value)} credits?`
+    : `⚠️ 1× ${shiny ? "shiny " : ""}${nameOf(i)} verkopen voor ${fmt(value)} credits? (je hebt er ${shiny ? sh : n})`
+  if (!confirm(msg)) return
+  act({ type: "sell", item: id, shiny, qty: 1, allowLast: true })
+  document.getElementById("sheet").classList.remove("on"); toast(`Verkocht! +${fmt(value)} credits`)
+}
+function buy(kind) {
+  if (S.credits < SNAP.rules.prices[kind]) return toast("Niet genoeg credits")
+  act({ type: "buy", kind }); toast(kind === "elite" ? "Elite-kist gekocht!" : "Kist gekocht!")
+}
+
+// ===== kist openen: hier op je telefoon geloot, met dezelfde kansen als op je laptop =====
+function weighted(odds) {
+  const tot = Object.values(odds).reduce((a, b) => a + b, 0); let x = Math.random() * tot
+  for (const r of RAR()) { x -= odds[r]; if (x <= 0) return r }
+  return RAR()[0]
+}
+function roll(kind) {
+  const R = SNAP.rules
+  for (const [id, odds] of Object.entries(R.shinyOnly)) if (Math.random() < odds[kind]) return { item: id, shiny: true }
+  const rolled = weighted(R.odds[kind]), wantMark = Math.random() < R.markChance[kind]
+  const pool = SNAP.items.filter(i => !i.secret && !i.shinyOnly && (!i.season || i.season === R.month) && (i.type === "mark") === wantMark)
+  for (let k = RAR().indexOf(rolled); k >= 0; k--) {
+    const opts = pool.filter(i => i.rarity === RAR()[k])
+    if (opts.length) {
+      const sc = typeof R.shinyChance === "number" ? R.shinyChance : R.shinyChance[RAR()[k]]  // per zeldzaamheid
+      return { item: opts[Math.floor(Math.random() * opts.length)].id, shiny: Math.random() < sc }
+    }
+  }
+  return { item: pool[0].id, shiny: false }
+}
+async function openCrate() {
+  const btn = document.getElementById("openBtn"), box = document.getElementById("bigcrate"), rv = document.getElementById("reveal")
+  if (!S.crates.length) return
+  btn.disabled = true; rv.classList.remove("on"); box.classList.remove("shake"); void box.offsetWidth; box.classList.add("shake")
+  const kind = S.crates[0], res = roll(kind), it = itemOf(res.item)
+  const isNew = have(S, res.item)[res.shiny ? 1 : 0] === 0
+  await new Promise(r => setTimeout(r, 950))
+  act({ type: "open", kind, item: res.item, shiny: res.shiny })
+  const color = it.color
+  rv.style.borderColor = color; rv.style.boxShadow = `0 0 40px ${color}66`
+  document.getElementById("rvRar").innerHTML = `<span style="color:${color}">${res.shiny ? "✦ SHINY ✦ " : ""}${it.rarityName.toUpperCase()}</span>`
+  const img = document.getElementById("rvImg"); img.dataset.k = (res.shiny && !it.shinyOnly ? "s_" : "n_") + it.id; img.removeAttribute("src"); loadImg(img.dataset.k)
+  document.getElementById("rvName").textContent = it.type === "line" ? "Nieuwe begroeting" : it.name
+  document.getElementById("rvSub").textContent = (isNew ? "NIEUW! · " : "") + (it.type === "line" ? it.name : it.sub)
+  const ch = kind === "elite" ? (res.shiny ? it.chanceShinyElite : it.chanceElite) : (res.shiny ? it.chanceShiny : it.chance)
+  document.getElementById("rvChance").textContent = "KANS " + pct(ch) + " " + (SOORT[it.type] || "").toUpperCase()
+  rv.classList.add("on")
+  setTimeout(() => btn.disabled = !S.crates.length, 300)
+}
+
+// ===== trivia: de 10 vragen van vandaag staan al op je telefoon =====
+let tq = null
+function trivia() {
+  document.getElementById("tnext").style.display = "none"; document.getElementById("tf").textContent = ""
+  const d = day(S, today())
+  if (!d) { document.getElementById("tq").textContent = "De vragen van vandaag komen zodra je laptop thuis is bijgewerkt."; return }
+  const t = d.trivia, R = SNAP.rules
+  if (t.answered >= R.triviaPerDay) {
+    tq = { done: true }
+    document.getElementById("tprog").textContent = `KLAAR VOOR VANDAAG  ·  ${t.correct}/${R.triviaPerDay} GOED` + (t.rewarded ? "  ·  ✓ KIST VERDIEND" : "")
+    document.getElementById("tq").textContent = t.rewarded ? "Goed gedaan, sir! Morgen staan er 10 nieuwe vragen klaar."
+      : `Je had er ${t.correct} goed (${R.rewardAt} nodig voor een kist). Morgen een nieuwe kans!`
+    document.getElementById("ta").innerHTML = ""; return
+  }
+  tq = t.questions[t.answered]
+  document.getElementById("tprog").textContent = `VRAAG ${t.answered + 1}/${R.triviaPerDay}  ·  ${t.correct} GOED  ·  ` + (t.rewarded ? "✓ KIST VERDIEND" : `${R.rewardAt} GOED = KIST`)
+  document.getElementById("tq").textContent = tq.q
+  const a = document.getElementById("ta"); a.innerHTML = ""
+  for (const ans of tq.a.slice().sort(() => Math.random() - 0.5)) {
+    const b = document.createElement("button"); b.textContent = ans; b.onclick = () => answer(b, ans); a.appendChild(b)
+  }
+}
+function answer(btn, ans) {
+  document.querySelectorAll("#ta button").forEach(b => b.disabled = true)
+  const right = tq.a[tq.r], correct = ans === right
+  btn.classList.add(correct ? "right" : "wrong")
+  if (!correct) document.querySelectorAll("#ta button").forEach(b => { if (b.textContent === right) b.classList.add("right") })
+  document.getElementById("tf").innerHTML = correct ? '<span style="color:var(--uncommon)">✓ GOED!</span>'
+    : `<span style="color:var(--mythic)">✗ Helaas.</span> <span class="muted">Het was: ${right}</span>`
+  const before = day(S, today()).trivia.rewarded
+  act({ type: "trivia", correct })
+  const t = day(S, today()).trivia
+  if (!before && t.rewarded) toast(`🎁 ${SNAP.rules.rewardAt} goed: je hebt een kist verdiend!`)
+  document.getElementById("tnext").textContent = t.answered >= SNAP.rules.triviaPerDay ? "Bekijk je score" : "Volgende vraag"
+  document.getElementById("tnext").style.display = "block"
+}
+
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b))
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === b.dataset.p))
+  document.getElementById("reveal").classList.remove("on")
+})
+document.getElementById("syncline").onclick = () => sync(true)
+window.addEventListener("online", () => sync())
+window.addEventListener("offline", syncLine)
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {})
+
+// starten: eerst wat er al op je telefoon staat, dan bijwerken; daarna inchecken (één keer per dag)
+if (SNAP) { S = derive(); render() } else if (!CFG.d) showOffline()
+sync().then(() => {
+  if (SNAP && ls("jv-checkin") !== today()) { ls("jv-checkin", today()); act({ type: "checkin" }) }
+})
+setInterval(() => { if (!document.hidden) sync() }, 30000)
+</script>
+</body>
+</html>
