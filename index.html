@@ -236,7 +236,7 @@ const today = () => new Date().toLocaleDateString("sv-SE")   // 2026-10-06 (je e
 const RAR = () => SNAP.rules.rarities
 const itemOf = id => SNAP.items.find(x => x.id === id)
 const fmt = n => Number(n).toLocaleString("nl-NL")
-const SOORT = {mark: "van alle Marks", skin: "van alle skins", title: "van alle titels", line: "van alle quotes"}
+const SOORT = {mark: "per kist", skin: "per kist", title: "per kist", line: "per kist"}  // kans dat precies dit item uit één kist komt
 function pct(c) { const v = c * 100; const s = v >= 1 ? v.toFixed(1) : v >= 0.1 ? v.toFixed(2) : v >= 0.01 ? v.toFixed(3) : v.toFixed(4); return s.replace(".", ",") + "%" }
 function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2600) }
 
@@ -259,7 +259,7 @@ function questEvent(s, name, d) {
 }
 const have = (s, id) => s.owned[id] || [0, 0]
 function canSell(s, id, shiny, allowLast) {
-  const [n, sh] = have(s, id); return (shiny ? sh : n) > 0 && (allowLast || n + sh >= 2)
+  const [n, sh] = have(s, id); return (shiny ? sh : n) > 0 && (allowLast || (shiny ? sh : n) >= 2)  // per versie: altijd één over
 }
 function reduce(s, e) {
   const R = SNAP.rules
