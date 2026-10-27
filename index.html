@@ -147,11 +147,8 @@
   <button class="btn ghost" onclick="sync(true)">Opnieuw proberen</button>
 </div>
 
-<!-- QUESTS -->
+<!-- TRIVIA -->
 <section id="quests" class="on">
-  <h2>TELEFOON-QUESTS VANDAAG</h2>
-  <div id="questList"></div>
-  <p class="muted" id="bonusText"></p>
   <h2>IRON MAN-TRIVIA</h2>
   <div class="card">
     <div class="reward" id="tprog" style="margin-bottom:10px"></div>
@@ -160,8 +157,7 @@
     <div class="feedback" id="tf"></div>
     <button class="btn ghost" id="tnext" style="margin-top:12px;display:none" onclick="trivia()">Volgende vraag</button>
   </div>
-  <h2>MISSIES OP JE LAPTOP</h2>
-  <div id="missionList"></div>
+  <p class="muted">Elke dag 10 vragen. 7 goed = Stark Credits voor kisten in de shop.</p>
 </section>
 
 <!-- KISTEN -->
@@ -214,7 +210,7 @@
 <div class="toast" id="toast"></div>
 
 <nav>
-  <button class="on" data-p="quests"><b>◎</b>QUESTS</button>
+  <button class="on" data-p="quests"><b>◎</b>TRIVIA</button>
   <button data-p="crates"><b class="badge" id="navCrates">📦</b>KISTEN</button>
   <button data-p="shop"><b>⬢</b>SHOP</button>
   <button data-p="collection"><b>✦</b>COLLECTIE</button>
@@ -226,17 +222,14 @@ const Q = new URLSearchParams(location.search)
 const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v) } catch (e) { return null } }
 for (const k of ["d", "i", "t"]) if (Q.get(k)) ls("jv-" + k, Q.get(k))
 const CFG = { d: Q.get("d") || ls("jv-d"), i: Q.get("i") || ls("jv-i"), t: Q.get("t") || ls("jv-t") }
-const TYPES = { mark: "Marks", skin: "Pil-skins", title: "Titels", line: "Begroetingen" }
-
 // ===== gegevens: de laatste stand van je laptop (snapshot) + wat je hier sindsdien deed (events) =====
 let SNAP = JSON.parse(ls("jv-snap") || "null")
 let EVENTS = JSON.parse(ls("jv-events") || "[]")
-let S = null, filter = "mark", shinyMode = false, lastSync = Number(ls("jv-lastsync") || 0), syncing = false
+let S = null, shinyMode = false, lastSync = Number(ls("jv-lastsync") || 0), syncing = false
 const today = () => new Date().toLocaleDateString("sv-SE")   // 2026-10-06 (je eigen tijdzone)
 const RAR = () => SNAP.rules.rarities
 const itemOf = id => SNAP.items.find(x => x.id === id)
 const fmt = n => Number(n).toLocaleString("nl-NL")
-const SOORT = {mark: "per kist", skin: "per kist", title: "per kist", line: "per kist"}  // kans dat precies dit item uit één kist komt
 function pct(c) { const v = c * 100; const s = v >= 1 ? v.toFixed(1) : v >= 0.1 ? v.toFixed(2) : v >= 0.01 ? v.toFixed(3) : v.toFixed(4); return s.replace(".", ",") + "%" }
 function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2600) }
 
@@ -248,36 +241,25 @@ function derive() {
   return s
 }
 function day(s, d) { return s.days[d] }
-function questEvent(s, name, d) {
-  const dd = day(s, d); if (!dd) return
-  let changed = false
-  for (const q of dd.quests) if (q.event === name && q.progress < q.goal) {
-    q.progress++; changed = true
-    if (q.progress >= q.goal) { if (SNAP.rules.questCredits) s.credits += SNAP.rules.questCredits; else s.crates.push("standard") }
-  }
-  if (changed && dd.quests.every(q => q.progress >= q.goal) && !dd.bonus) { dd.bonus = true; s.credits += SNAP.rules.bonus }
-}
 const have = (s, id) => s.owned[id] || [0, 0]
 function canSell(s, id, shiny, allowLast) {
   const [n, sh] = have(s, id); return (shiny ? sh : n) > 0 && (allowLast || (shiny ? sh : n) >= 2)  // per versie: altijd één over
 }
 function reduce(s, e) {
   const R = SNAP.rules
-  if (e.type === "checkin" || e.type === "view") questEvent(s, e.type, e.day)
-  else if (e.type === "trivia") {
+  if (e.type === "trivia") {
     const dd = day(s, e.day); if (!dd) return
     const t = dd.trivia; if (t.answered >= R.triviaPerDay) return
     t.answered++
     if (e.correct) t.correct++
-    if (t.correct >= R.rewardAt && !t.rewarded) { t.rewarded = true; if (R.triviaCredits) s.credits += R.triviaCredits; else s.crates.push("standard") }
-    if (e.correct) questEvent(s, "trivia", e.day)
+    if (t.correct >= R.rewardAt && !t.rewarded) { t.rewarded = true; s.credits += R.triviaCredits || 100 }
   } else if (e.type === "sell") {
     let got = 0
     for (let k = 0; k < (e.qty || 1); k++) {
       if (!canSell(s, e.item, e.shiny, e.allowLast)) break
-      const o = s.owned[e.item]; o[e.shiny ? 1 : 0]--; const it = itemOf(e.item); got += e.shiny ? it.sellShiny : it.sell
+      const o = s.owned[e.item]; o[e.shiny ? 1 : 0]--; const it = itemOf(e.item); if (it) got += e.shiny ? it.sellShiny : it.sell
     }
-    if (got) { s.credits += got; questEvent(s, "sell", e.day) }
+    if (got) s.credits += got
   } else if (e.type === "buy") {
     const price = R.prices[e.kind]; if (s.credits >= price) { s.credits -= price; s.crates.push(e.kind) }
   } else if (e.type === "open") {
@@ -285,7 +267,6 @@ function reduce(s, e) {
     if (i < 0) return
     s.crates.splice(i, 1)
     const o = s.owned[e.item] || (s.owned[e.item] = [0, 0]); o[e.shiny ? 1 : 0]++
-    questEvent(s, "open_phone", e.day)
   }
 }
 function act(e) {
@@ -383,30 +364,10 @@ function render() {
   document.getElementById("credits").textContent = "⬢ " + fmt(S.credits)
   document.getElementById("crateChip").textContent = "📦 " + S.crates.length
   document.getElementById("navCrates").dataset.n = S.crates.length
-  const d = day(S, today())
-  // quests
-  const q = document.getElementById("questList"); q.innerHTML = ""
-  if (!d) q.innerHTML = `<p class="muted">Je quests voor vandaag komen zodra je laptop thuis is bijgewerkt.</p>`
-  for (const m of d ? d.quests : []) {
-    const done = m.progress >= m.goal
-    q.insertAdjacentHTML("beforeend", `<div class="card quest ${done ? "done" : ""}"><span class="t">${m.text}</span>
-      <span class="n">${Math.min(m.progress, m.goal)}/${m.goal}</span>
-      <div class="bar"><i style="width:${100 * Math.min(1, m.progress / m.goal)}%"></i></div>
-      <span class="reward">${done ? `✓ +${SNAP.rules.questCredits || 50} CREDITS` : `BELONING: ${SNAP.rules.questCredits || 50} CREDITS`}</span></div>`)
-  }
-  document.getElementById("bonusText").textContent = !d ? "" : d.bonus ? `✓ Alle quests klaar: +${SNAP.rules.bonus} credits.` : `Alle 3 klaar = +${SNAP.rules.bonus} credits extra.`
-  const ml = document.getElementById("missionList"); ml.innerHTML = ""
-  for (const m of SNAP.missions) {
-    const done = m.progress >= m.goal
-    ml.insertAdjacentHTML("beforeend", `<div class="card quest ${done ? "done" : ""}"><span class="t">${m.text}</span>
-      <span class="n">${Math.min(m.progress, m.goal)}/${m.goal}</span>
-      <div class="bar"><i style="width:${100 * Math.min(1, m.progress / m.goal)}%"></i></div>
-      <span class="reward">${done ? `✓ +${SNAP.rules.missionCredits || 50} CREDITS` : `BELONING: ${SNAP.rules.missionCredits || 50} CREDITS`}</span></div>`)
-  }
   if (!tq) trivia()
   // kisten
   const n = S.crates.length
-  document.getElementById("crateText").textContent = n ? `${n} ${n === 1 ? "kist" : "kisten"} klaar${S.crates.includes("elite") ? " · waarvan Elite!" : ""}` : "Geen kisten. Doe een quest of koop er een in de shop."
+  document.getElementById("crateText").textContent = n ? `${n} ${n === 1 ? "kist" : "kisten"} klaar${S.crates.includes("elite") ? " · waarvan Elite!" : ""}` : "Geen kisten. Koop er een in de shop, of wacht op je dagelijkse kist."
   document.getElementById("openBtn").disabled = !n
   // shop
   document.getElementById("pStd").textContent = "⬢ " + SNAP.rules.prices.standard
@@ -420,12 +381,8 @@ function render() {
   mode.textContent = shinyMode ? "✦ SHINY'S" : "GEWOON"; mode.className = "on"
   if (shinyMode) mode.style.cssText = "color:#05080D;border:0;background:linear-gradient(90deg,#ff4fd8,#6b8cff,#3df0ff,#7cff6b,#ffe14f)"
   mode.onclick = () => { shinyMode = !shinyMode; render() }; f.appendChild(mode)
-  for (const [k, label] of Object.entries(TYPES)) {
-    const b = document.createElement("button"); b.textContent = label; b.className = filter === k ? "on" : ""
-    b.onclick = () => { filter = k; render() }; f.appendChild(b)
-  }
   const g = document.getElementById("grid"); g.innerHTML = ""
-  const shown = SNAP.items.filter(i => i.type === filter && (shinyMode || !i.shinyOnly))
+  const shown = SNAP.items.filter(i => shinyMode || !i.shinyOnly)
   const has = i => shinyMode ? have(S, i.id)[1] > 0 : (!i.shinyOnly && have(S, i.id)[0] > 0)
   document.getElementById("colHead").textContent = `${shinyMode ? "✦ SHINY'S" : "COLLECTIE"}  ${shown.filter(has).length}/${shown.length}`
   for (const i of shown) {
@@ -437,16 +394,15 @@ function render() {
     g.appendChild(el)
   }
 }
-const nameOf = i => i.type === "line" ? "Begroeting" : i.name
+const nameOf = i => i.name
 
 function detail(i, owned) {
-  if (owned) act({ type: "view" })
   const [n, sh] = have(S, i.id)
   document.getElementById("sheetIn").innerHTML = imgTag(i.id, shinyMode && !i.shinyOnly, "", owned ? "" : "filter:grayscale(1) brightness(.2)")
     + `<div class="head" style="color:var(--${i.rarity});font-size:13px">${i.rarityName.toUpperCase()}${i.shinyOnly ? " · ✦ ALLEEN SHINY" : ""}</div>
-    <h3 style="font-size:24px;margin:6px 0">${owned ? (i.type === "line" ? "“" + i.name + "”" : i.name) : (i.secret ? "Geheim item" : "Nog niet gevonden")}</h3>
-    <p class="muted">${i.type === "line" ? "Begroeting van Jarvis" : i.sub}</p>
-    <p class="muted">${i.secret ? "Alleen via een geheime actie" : `Kans ${SOORT[i.type] || ""}: ${pct(i.chance)} · ✦ shiny ${pct(i.chanceShiny)}`}</p>
+    <h3 style="font-size:24px;margin:6px 0">${owned ? i.name : (i.secret ? "Geheime Mark" : "Nog niet gevonden")}</h3>
+    <p class="muted">${i.sub}</p>
+    <p class="muted">${i.secret ? "Alleen via een geheime actie" : `Kans per kist: ${pct(i.chance)} · ✦ shiny ${pct(i.chanceShiny)}`}</p>
     ${n + sh ? `<p class="muted">Je hebt: ${n}× gewoon${sh ? " · " + sh + "× ✦ shiny" : ""}</p>` : ""}
     ${SNAP.equipped.includes(i.id) ? `<p style="color:var(--accent)" class="head">✓ UITGERUST OP JE LAPTOP</p>` : ""}
     ${n > 0 ? `<button class="btn ghost" style="margin-top:12px" onclick="sellOne('${i.id}', false)">VERKOOP 1× GEWOON  ·  +${fmt(i.sell)}</button>` : ""}
@@ -523,8 +479,8 @@ function weighted(odds) {
 function roll(kind) {
   const R = SNAP.rules
   for (const [id, odds] of Object.entries(R.shinyOnly)) if (Math.random() < odds[kind]) return { item: id, shiny: true }
-  const rolled = weighted(R.odds[kind]), wantMark = Math.random() < R.markChance[kind]
-  const pool = SNAP.items.filter(i => !i.secret && !i.shinyOnly && (!i.season || i.season === R.month) && (i.type === "mark") === wantMark)
+  const rolled = weighted(R.odds[kind])
+  const pool = SNAP.items.filter(i => !i.secret && !i.shinyOnly && (!i.season || i.season === R.month))
   for (let k = RAR().indexOf(rolled); k >= 0; k--) {
     const opts = pool.filter(i => i.rarity === RAR()[k])
     if (opts.length) {
@@ -546,10 +502,10 @@ async function openCrate() {
   rv.style.borderColor = color; rv.style.boxShadow = `0 0 40px ${color}66`
   document.getElementById("rvRar").innerHTML = `<span style="color:${color}">${res.shiny ? "✦ SHINY ✦ " : ""}${it.rarityName.toUpperCase()}</span>`
   const img = document.getElementById("rvImg"); img.dataset.k = (res.shiny && !it.shinyOnly ? "s_" : "n_") + it.id; img.removeAttribute("src"); loadImg(img.dataset.k)
-  document.getElementById("rvName").textContent = it.type === "line" ? "Nieuwe begroeting" : it.name
-  document.getElementById("rvSub").textContent = (isNew ? "NIEUW! · " : "") + (it.type === "line" ? it.name : it.sub)
+  document.getElementById("rvName").textContent = it.name
+  document.getElementById("rvSub").textContent = (isNew ? "NIEUW! · " : "") + it.sub
   const ch = kind === "elite" ? (res.shiny ? it.chanceShinyElite : it.chanceElite) : (res.shiny ? it.chanceShiny : it.chance)
-  document.getElementById("rvChance").textContent = "KANS " + pct(ch) + " " + (SOORT[it.type] || "").toUpperCase()
+  document.getElementById("rvChance").textContent = "KANS " + pct(ch) + " PER KIST"
   rv.classList.add("on")
   setTimeout(() => btn.disabled = !S.crates.length, 300)
 }
@@ -601,11 +557,9 @@ window.addEventListener("online", () => sync())
 window.addEventListener("offline", syncLine)
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {})
 
-// starten: eerst wat er al op je telefoon staat, dan bijwerken; daarna inchecken (één keer per dag)
+// starten: eerst wat er al op je telefoon staat, dan bijwerken
 if (SNAP) { S = derive(); render() } else if (!CFG.d) showOffline()
-sync().then(() => {
-  if (SNAP && ls("jv-checkin") !== today()) { ls("jv-checkin", today()); act({ type: "checkin" }) }
-})
+sync()
 setInterval(() => { if (!document.hidden) sync() }, 30000)
 </script>
 </body>
